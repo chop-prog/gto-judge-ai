@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- Cover image for the README and the portfolio card. The chart is drawn by running the real
+     judge (src/judge.js) on a synthetic push-up recording, so the counted/rejected marks are its
+     actual decisions. Render: open over http and screenshot at 1440×900. -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; width: 1440px; height: 900px; background: #121B26; color: #F2EFE8; font-family: "Segoe UI", Roboto, Arial, sans-serif; display: flex; align-items: center; }
+  .left { padding-left: 100px; width: 620px; }
+  .kicker { color: #F2994A; font-weight: 700; letter-spacing: .14em; font-size: 22px; text-transform: uppercase; }
+  h1 { font-size: 112px; line-height: 1; margin: 22px 0 28px; letter-spacing: -0.03em; }
+  p { font-size: 30px; line-height: 1.35; color: #C9D3DD; margin: 0; }
+  .card { margin-left: 50px; width: 560px; background: #1B2734; border: 1px solid #2A3A4B; border-radius: 28px; padding: 28px; }
+  .rec { color: #A9B8C6; font-size: 20px; margin-bottom: 16px; }
+  .stage { background: #0B121A; border-radius: 18px; height: 190px; }
+  .row { display: flex; align-items: baseline; gap: 16px; margin-top: 20px; }
+  .big { font-size: 96px; font-weight: 800; color: #F2994A; line-height: 1; }
+  .lbl { font-size: 24px; color: #F2EFE8; }
+  .bad { margin-top: 14px; background: #F2994A; color: #16202B; border-radius: 14px; padding: 12px 16px; font-size: 21px; }
+  svg text { font-family: inherit; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="kicker">Компьютерное зрение для спорта</div>
+    <h1>ИИ-судья ГТО</h1>
+    <p>Смартфон считает повторения и проверяет технику — сдавать нормативы честно и без очередей</p>
+  </div>
+  <div class="card">
+    <div class="rec">▷ Отжимания · угол в локте по кадрам</div>
+    <div class="stage"><svg id="chart" width="504" height="190"></svg></div>
+    <div class="row"><span class="big" id="ok">0</span><span class="lbl">отжиманий<br>засчитано</span></div>
+    <div class="bad" id="bad"></div>
+  </div>
+<script type="module">
+import { MODES, createJudge } from '../src/judge.js';
+
+// Synthetic recording: 5 reps at 30 fps, the 4th one too shallow.
+const lows = [70, 78, 72, 122, 74];
+const frames = [];
+for (let i = 0; i < 12; i++) frames.push(172);
+for (const low of lows) for (let i = 0; i < 36; i++) frames.push(172 - (172 - low) * (1 - Math.cos(2 * Math.PI * i / 36)) / 2);
+for (let i = 0; i < 12; i++) frames.push(172);
+
+const cfg = MODES.pushup;
+const judge = createJudge(cfg);
+const pts = [], marks = [];
+frames.forEach((e, i) => {
+  const ev = judge.step(e, 176, i * 1000 / 30);
+  pts.push(judge.st.elbow);
+  if (ev && ev.type !== 'ready') {
+    // Mark the deepest point of the repetition that was just judged.
+    let lowI = i;
+    for (let j = i; j > i - 36 && j >= 0; j--) if (pts[j] < pts[lowI]) lowI = j;
+    marks.push({ i: lowI, ok: ev.type === 'ok' });
+  }
+});
+
+const W = 504, H = 190, x = (i) => 96 + i / (frames.length - 1) * (W - 110), y = (a) => 16 + (180 - a) / 125 * (H - 32);
+const svg = document.getElementById('chart');
+const line = (a, color, label) => `<line x1="0" x2="${W}" y1="${y(a)}" y2="${y(a)}" stroke="${color}" stroke-dasharray="7 6" stroke-width="2"/><text x="10" y="${y(a) - 6}" fill="${color}" font-size="15">${label}</text>`;
+let html = line(cfg.up, '#6AB3F2', `верх ${cfg.up}°`) + line(cfg.down, '#F2994A', `низ ${cfg.down}°`);
+html += `<polyline fill="none" stroke="#F2EFE8" stroke-width="3.5" stroke-linejoin="round" points="${pts.map((a, i) => `${x(i).toFixed(1)},${y(a).toFixed(1)}`).join(' ')}"/>`;
+for (const m of marks) {
+  const lowI = m.i, a = pts[lowI];
+  html += `<circle cx="${x(lowI)}" cy="${y(a)}" r="8" fill="${m.ok ? '#6AB3F2' : '#F2994A'}"/>`;
+}
+svg.innerHTML = html;
+document.getElementById('ok').textContent = judge.st.ok;
+document.getElementById('bad').textContent = `${judge.st.bad} не засчитано: руки согнуты мало`;
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>
