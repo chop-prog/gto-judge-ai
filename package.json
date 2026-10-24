@@ -1,0 +1,14 @@
+{
+  "name": "gto-judge-ai",
+  "version": "1.0.0",
+  "description": "AI judge for ГТО fitness tests: counts push-ups and checks form from the phone camera with MediaPipe Pose.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
